@@ -39,8 +39,10 @@ func main() {
 
 	var uninstall bool
 	var debug bool
+	var skipApiKey bool
 	flag.BoolVar(&uninstall, "uninstall", false, "Uninstall the application")
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
+	flag.BoolVar(&skipApiKey, "skip-api-key", false, "Skip API key check")
 	flag.Parse()
 
 	if debug {
@@ -80,7 +82,7 @@ func main() {
 	}
 
 	insiApiKey := os.Getenv(cfg.ApiKeyEnv)
-	if insiApiKey == "" {
+	if insiApiKey == "" && !skipApiKey && shouldCheckApiKey() {
 		color.HiRed("API key not set")
 		color.HiRed("Please set the API key in the environment variable %s", cfg.ApiKeyEnv)
 		color.HiRed("You can find or create the API key in the Insula Labs' user dashboard: https://insulalabs.io")

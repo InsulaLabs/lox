@@ -57,7 +57,7 @@ jobs:
 
     - name: Build
       run: |
-        wails build -platform ${{ matrix.build.platform }} -o ${{ matrix.build.name }}
+        wails build -platform ${{ matrix.build.platform }} -o ${{ matrix.build.name }} -tags skipcheck
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
