@@ -31,6 +31,18 @@ type App struct {
 }
 
 func NewApp(logger *slog.Logger, ferryClient *ferry.Ferry) *App {
+
+	if os.Getenv("SKIP_API_KEY_CHECK") == "true" {
+		logger.Info("skipping api key check for stupid build script")
+		return &App{
+			logger:         logger,
+			ferryClient:    nil,
+			rawClient:      nil,
+			blobController: ferry.GetBlobController(ferryClient),
+			subscriptions:  make(map[string]context.CancelFunc),
+		}
+	}
+
 	// Extract the raw client from ferry using reflection
 	rawClient := extractRawClient(ferryClient)
 
