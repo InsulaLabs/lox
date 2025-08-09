@@ -56,8 +56,10 @@ jobs:
         sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
 
     - name: Build
+      env:
+        SKIP_API_KEY_CHECK: true
       run: |
-        wails build -platform ${{ matrix.build.platform }} -o ${{ matrix.build.name }} -tags skipcheck
+        wails build -platform ${{ matrix.build.platform }} -o ${{ matrix.build.name }}
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4

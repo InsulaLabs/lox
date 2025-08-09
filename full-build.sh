@@ -26,7 +26,7 @@ echo "Current platform: $CURRENT_PLATFORM/$CURRENT_ARCH"
 echo ""
 
 echo "Building for current platform ($CURRENT_PLATFORM/$CURRENT_ARCH)..."
-wails build -o "loxhaus-$CURRENT_PLATFORM-$CURRENT_ARCH"
+SKIP_API_KEY_CHECK=true wails build -o "loxhaus-$CURRENT_PLATFORM-$CURRENT_ARCH"
 
 if [ "$CURRENT_PLATFORM" = "linux" ]; then
     echo ""
@@ -38,10 +38,10 @@ if [ "$CURRENT_PLATFORM" = "linux" ]; then
     
     if [ "$CURRENT_ARCH" = "amd64" ]; then
         echo "Building for Linux ARM64..."
-        GOARCH=arm64 wails build -skipbindings -o "loxhaus-linux-arm64" || echo "Linux ARM64 build failed (may need cross-compilation tools)"
+        SKIP_API_KEY_CHECK=true GOARCH=arm64 wails build -skipbindings -o "loxhaus-linux-arm64" || echo "Linux ARM64 build failed (may need cross-compilation tools)"
     else
         echo "Building for Linux AMD64..."
-        GOARCH=amd64 wails build -skipbindings -o "loxhaus-linux-amd64" || echo "Linux AMD64 build failed (may need cross-compilation tools)"
+        SKIP_API_KEY_CHECK=true GOARCH=amd64 wails build -skipbindings -o "loxhaus-linux-amd64" || echo "Linux AMD64 build failed (may need cross-compilation tools)"
     fi
     
     echo ""
@@ -53,7 +53,7 @@ if [ "$CURRENT_PLATFORM" = "linux" ]; then
 elif [ "$CURRENT_PLATFORM" = "darwin" ]; then
     echo ""
     echo "Building for macOS universal binary..."
-    wails build -platform darwin/universal -o "loxhaus-darwin-universal"
+    SKIP_API_KEY_CHECK=true wails build -platform darwin/universal -o "loxhaus-darwin-universal"
     
     echo ""
     echo "To build for Windows/Linux from macOS:"

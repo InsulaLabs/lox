@@ -82,7 +82,7 @@ func main() {
 	}
 
 	insiApiKey := os.Getenv(cfg.ApiKeyEnv)
-	if insiApiKey == "" && !skipApiKey && shouldCheckApiKey() {
+	if insiApiKey == "" && !skipApiKey && os.Getenv("SKIP_API_KEY_CHECK") != "true" {
 		color.HiRed("API key not set")
 		color.HiRed("Please set the API key in the environment variable %s", cfg.ApiKeyEnv)
 		color.HiRed("You can find or create the API key in the Insula Labs' user dashboard: https://insulalabs.io")
@@ -99,14 +99,16 @@ func main() {
 	}
 
 	ferryClient, err := ferry.New(logger, ferryConfig)
-	if err != nil {
+	if err != nil && os.Getenv("SKIP_API_KEY_CHECK") != "true" {
 		color.HiRed("Error: %v", err)
 		os.Exit(1)
 	}
 
-	if err := ferryClient.Ping(5, time.Second); err != nil {
-		color.HiRed("Error: %v", err)
-		os.Exit(1)
+	if ferryClient != nil {
+		if err := ferryClient.Ping(5, time.Second); err != nil && os.Getenv("SKIP_API_KEY_CHECK") != "true" {
+			color.HiRed("Error: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	logger.Info("client connected")
