@@ -38,7 +38,7 @@ func NewApp(logger *slog.Logger, ferryClient *ferry.Ferry) *App {
 			logger:         logger,
 			ferryClient:    nil,
 			rawClient:      nil,
-			blobController: ferry.GetBlobController(ferryClient),
+			blobController: nil,
 			subscriptions:  make(map[string]context.CancelFunc),
 		}
 	}
