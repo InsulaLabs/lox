@@ -1,5 +1,5 @@
-github.com/InsulaLabs/insi v0.0.0-20250804133841-3ab06fdfad6f h1:TM4gnBVJ5MGBypN7HUa+nDmvn5E84wl6SeuC8JEehxE=
-github.com/InsulaLabs/insi v0.0.0-20250804133841-3ab06fdfad6f/go.mod h1:jsD4+sLjLbje34wCeXRMMJIhIR3peMjyIUiTS2RZ0Zo=
+github.com/InsulaLabs/insi v0.0.0-20250811135112-1a2447ff86d1 h1:HSullx9FWOr0buOsOQ9xc2YFp5gw/Tb4lfVjX2Hnu5g=
+github.com/InsulaLabs/insi v0.0.0-20250811135112-1a2447ff86d1/go.mod h1:jsD4+sLjLbje34wCeXRMMJIhIR3peMjyIUiTS2RZ0Zo=
 github.com/bep/debounce v1.2.1 h1:v67fRdBA9UQu2NhLFXrSg0Brw7CexQekrBwDMM8bzeY=
 github.com/bep/debounce v1.2.1/go.mod h1:H8yggRPQKLUhUoqrJC1bO2xNya7vanpDl7xR3ISbCJ0=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

@@ -137,9 +137,9 @@ func main() {
 
 func generateConfig() []byte {
 	endpointList := []string{
-		"db-0.insula.dev:443",
-		"db-1.insula.dev:443",
-		"db-2.insula.dev:443",
+		"red.insulalabs.io:443",
+		"blue.insulalabs.io:443",
+		"green.insulalabs.io:443",
 	}
 
 	cfg := FerryConfig{

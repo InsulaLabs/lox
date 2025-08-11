@@ -3,7 +3,7 @@ module loxhaus
 go 1.24.2
 
 require (
-	github.com/InsulaLabs/insi v0.0.0-20250804133841-3ab06fdfad6f
+	github.com/InsulaLabs/insi v0.0.0-20250811135112-1a2447ff86d1
 	github.com/fatih/color v1.18.0
 	github.com/wailsapp/wails/v2 v2.10.1
 	gopkg.in/yaml.v2 v2.4.0
