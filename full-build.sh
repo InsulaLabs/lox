@@ -37,11 +37,11 @@ if [ "$CURRENT_PLATFORM" = "linux" ]; then
     echo "Attempting Linux builds only..."
     
     if [ "$CURRENT_ARCH" = "amd64" ]; then
-        echo "Building for Linux ARM64..."
-        SKIP_API_KEY_CHECK=true GOARCH=arm64 wails build -skipbindings -o "loxhaus-linux-arm64" || echo "Linux ARM64 build failed (may need cross-compilation tools)"
+        echo "Building for Linux ARM64 with -skipbindings..."
+        SKIP_API_KEY_CHECK=true GOARCH=arm64 wails build -skipbindings -platform linux/arm64 -o "loxhaus-linux-arm64" || echo "Linux ARM64 build failed"
     else
-        echo "Building for Linux AMD64..."
-        SKIP_API_KEY_CHECK=true GOARCH=amd64 wails build -skipbindings -o "loxhaus-linux-amd64" || echo "Linux AMD64 build failed (may need cross-compilation tools)"
+        echo "Building for Linux AMD64 with -skipbindings..."
+        SKIP_API_KEY_CHECK=true GOARCH=amd64 wails build -skipbindings -platform linux/amd64 -o "loxhaus-linux-amd64" || echo "Linux AMD64 build failed"
     fi
     
     echo ""
