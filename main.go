@@ -39,10 +39,8 @@ func main() {
 
 	var uninstall bool
 	var debug bool
-	var skipApiKey bool
 	flag.BoolVar(&uninstall, "uninstall", false, "Uninstall the application")
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
-	flag.BoolVar(&skipApiKey, "skip-api-key", false, "Skip API key check")
 	flag.Parse()
 
 	if debug {
@@ -82,38 +80,40 @@ func main() {
 	}
 
 	insiApiKey := os.Getenv(cfg.ApiKeyEnv)
-	if insiApiKey == "" && !skipApiKey && os.Getenv("SKIP_API_KEY_CHECK") != "true" {
-		color.HiRed("API key not set")
-		color.HiRed("Please set the API key in the environment variable %s", cfg.ApiKeyEnv)
-		color.HiRed("You can find or create the API key in the Insula Labs' user dashboard: https://insulalabs.io")
-		os.Exit(1)
-	}
+	requiresApiKey = insiApiKey == ""
 
-	color.HiGreen("Configuration loaded")
+	var ferryClient *ferry.Ferry
 
-	ferryConfig := &ferry.Config{
-		ApiKey:     os.Getenv(cfg.ApiKeyEnv),
-		Endpoints:  cfg.Endpoints,
-		SkipVerify: cfg.SkipVerify,
-		Domain:     cfg.Domain,
-	}
+	if !requiresApiKey {
+		color.HiGreen("Configuration loaded")
 
-	ferryClient, err := ferry.New(logger, ferryConfig)
-	if err != nil && os.Getenv("SKIP_API_KEY_CHECK") != "true" {
-		color.HiRed("Error: %v", err)
-		os.Exit(1)
-	}
+		ferryConfig := &ferry.Config{
+			ApiKey:     insiApiKey,
+			Endpoints:  cfg.Endpoints,
+			SkipVerify: cfg.SkipVerify,
+			Domain:     cfg.Domain,
+		}
 
-	if ferryClient != nil {
-		if err := ferryClient.Ping(5, time.Second); err != nil && os.Getenv("SKIP_API_KEY_CHECK") != "true" {
+		ferryClient, err = ferry.New(logger, ferryConfig)
+		if err != nil {
 			color.HiRed("Error: %v", err)
 			os.Exit(1)
 		}
+
+		if ferryClient != nil {
+			if err := ferryClient.Ping(5, time.Second); err != nil {
+				color.HiRed("Error: %v", err)
+				os.Exit(1)
+			}
+		}
+
+		logger.Info("client connected")
+	} else {
+		color.HiYellow("API key not found in environment")
+		color.HiYellow("Please enter it in the application UI")
 	}
 
-	logger.Info("client connected")
-
-	app := NewApp(logger, ferryClient)
+	app := NewApp(logger, ferryClient, cfg)
 
 	// Create application with options
 	err = wails.Run(&options.App{

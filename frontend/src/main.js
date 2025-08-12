@@ -5,6 +5,7 @@ import { EventsOn } from '../wailsjs/runtime/runtime';
 
 let currentTab = 'values';
 const pageSize = 50;
+let isConnected = false;
 
 const state = {
     values: { 
@@ -47,7 +48,8 @@ let confirmDialog = null;
 
 function renderApp() {
     document.querySelector('#app').innerHTML = `
-        <div class="container">
+        ${!isConnected ? renderApiKeyOverlay() : ''}
+        <div class="container ${!isConnected ? 'disabled' : ''}">
             <div class="tabs">
                 <button class="tab ${currentTab === 'values' ? 'active' : ''}" onclick="switchTab('values')">Values</button>
                 <button class="tab ${currentTab === 'cache' ? 'active' : ''}" onclick="switchTab('cache')">Cache</button>
@@ -288,6 +290,41 @@ function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+function renderApiKeyOverlay() {
+    return `
+        <div class="api-key-overlay">
+            <div class="api-key-dialog">
+                <h2>API Key Required</h2>
+                <p>Loxhaus needs an API key to connect to Insula Labs.</p>
+                
+                <div class="api-key-form">
+                    <div class="form-group">
+                        <label>Enter your API Key:</label>
+                        <input 
+                            type="password" 
+                            id="api-key-input" 
+                            class="form-input" 
+                            placeholder="Your Insula Labs API key..."
+                            onkeyup="handleApiKeyEnter(event)"
+                        />
+                    </div>
+                    
+                    <div class="api-key-actions">
+                        <button class="save-btn" onclick="connectWithApiKey()">Connect</button>
+                        <button class="load-env-btn" onclick="loadFromEnvironment()">Load from Environment</button>
+                    </div>
+                    
+                    <div class="api-key-help">
+                        <p>You can find or create your API key in the <a href="https://insulalabs.io" target="_blank">Insula Labs dashboard</a></p>
+                    </div>
+                </div>
+                
+                <div id="api-key-error" class="api-key-error" style="display: none;"></div>
+            </div>
+        </div>
+    `;
 }
 
 function showConfirm(title, message) {
@@ -966,4 +1003,75 @@ EventsOn('subscription-error', (error) => {
     alert(`Subscription error for topic "${error.topic}": ${error.error}`);
 });
 
-renderApp();
+EventsOn('connection-established', () => {
+    console.log('Connection established');
+    isConnected = true;
+    renderApp();
+});
+
+window.handleApiKeyEnter = function(event) {
+    if (event.key === 'Enter') {
+        connectWithApiKey();
+    }
+};
+
+window.connectWithApiKey = async function() {
+    const input = document.getElementById('api-key-input');
+    const errorEl = document.getElementById('api-key-error');
+    const apiKey = input.value.trim();
+    
+    if (!apiKey) {
+        errorEl.textContent = 'Please enter an API key';
+        errorEl.style.display = 'block';
+        return;
+    }
+    
+    errorEl.style.display = 'none';
+    
+    try {
+        await App.ConnectWithApiKey(apiKey);
+    } catch (error) {
+        console.error('Connection error:', error);
+        errorEl.textContent = error.message || 'Failed to connect with API key';
+        errorEl.style.display = 'block';
+    }
+};
+
+window.loadFromEnvironment = async function() {
+    const errorEl = document.getElementById('api-key-error');
+    errorEl.style.display = 'none';
+    
+    try {
+        const found = await App.CheckEnvironmentKey();
+        if (!found) {
+            errorEl.textContent = 'No API key found in environment variable INSI_API_KEY';
+            errorEl.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Environment check error:', error);
+        errorEl.textContent = error.message || 'Failed to load API key from environment';
+        errorEl.style.display = 'block';
+    }
+};
+
+// Initialize app
+async function initApp() {
+    try {
+        const requiresKey = await App.GetRequiresApiKey();
+        isConnected = !requiresKey;
+        renderApp();
+        
+        if (!isConnected) {
+            // Focus the API key input
+            setTimeout(() => {
+                const input = document.getElementById('api-key-input');
+                if (input) input.focus();
+            }, 100);
+        }
+    } catch (error) {
+        console.error('Init error:', error);
+        renderApp();
+    }
+}
+
+initApp();

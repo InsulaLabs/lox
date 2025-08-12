@@ -28,9 +28,11 @@ type App struct {
 
 	subscriptions    map[string]context.CancelFunc
 	subscriptionsMux sync.RWMutex
+
+	config *FerryConfig
 }
 
-func NewApp(logger *slog.Logger, ferryClient *ferry.Ferry) *App {
+func NewApp(logger *slog.Logger, ferryClient *ferry.Ferry, config *FerryConfig) *App {
 
 	if os.Getenv("SKIP_API_KEY_CHECK") == "true" {
 		logger.Info("skipping api key check for stupid build script")
@@ -40,18 +42,25 @@ func NewApp(logger *slog.Logger, ferryClient *ferry.Ferry) *App {
 			rawClient:      nil,
 			blobController: nil,
 			subscriptions:  make(map[string]context.CancelFunc),
+			config:         config,
 		}
 	}
 
-	// Extract the raw client from ferry using reflection
-	rawClient := extractRawClient(ferryClient)
+	var rawClient *client.Client
+	var blobController ferry.BlobController
+
+	if ferryClient != nil {
+		rawClient = extractRawClient(ferryClient)
+		blobController = ferry.GetBlobController(ferryClient)
+	}
 
 	return &App{
 		logger:         logger,
 		ferryClient:    ferryClient,
 		rawClient:      rawClient,
-		blobController: ferry.GetBlobController(ferryClient),
+		blobController: blobController,
 		subscriptions:  make(map[string]context.CancelFunc),
+		config:         config,
 	}
 }
 
@@ -112,7 +121,53 @@ func (a *App) Greet(name string) string {
 }
 
 func (a *App) GetRequiresApiKey() bool {
-	return requiresApiKey
+	return a.ferryClient == nil
+}
+
+func (a *App) CheckEnvironmentKey() (bool, error) {
+	apiKey := os.Getenv(a.config.ApiKeyEnv)
+	if apiKey == "" {
+		return false, nil
+	}
+
+	err := a.ConnectWithApiKey(apiKey)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (a *App) ConnectWithApiKey(apiKey string) error {
+	if apiKey == "" {
+		return fmt.Errorf("API key cannot be empty")
+	}
+
+	ferryConfig := &ferry.Config{
+		ApiKey:     apiKey,
+		Endpoints:  a.config.Endpoints,
+		SkipVerify: a.config.SkipVerify,
+		Domain:     a.config.Domain,
+	}
+
+	ferryClient, err := ferry.New(a.logger, ferryConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create ferry client: %w", err)
+	}
+
+	if err := ferryClient.Ping(5, time.Second); err != nil {
+		return fmt.Errorf("failed to connect to Insula Labs: %w", err)
+	}
+
+	a.ferryClient = ferryClient
+	a.rawClient = extractRawClient(ferryClient)
+	a.blobController = ferry.GetBlobController(ferryClient)
+
+	a.logger.Info("successfully connected with API key")
+
+	runtime.EventsEmit(a.ctx, "connection-established")
+
+	return nil
 }
 
 type KeyListResult struct {
@@ -121,6 +176,9 @@ type KeyListResult struct {
 }
 
 func (a *App) SearchValues(prefix string, offset, limit int) (KeyListResult, error) {
+	if a.rawClient == nil {
+		return KeyListResult{}, fmt.Errorf("not connected")
+	}
 	keys, err := a.rawClient.IterateByPrefix(prefix, offset, limit)
 	if err != nil {
 		a.logger.Error("failed to search values", "error", err)
@@ -130,6 +188,9 @@ func (a *App) SearchValues(prefix string, offset, limit int) (KeyListResult, err
 }
 
 func (a *App) GetValue(key string) (string, error) {
+	if a.rawClient == nil {
+		return "", fmt.Errorf("not connected")
+	}
 	value, err := a.rawClient.Get(key)
 	if err != nil {
 		if err.Error() == "key not found" {
@@ -142,6 +203,9 @@ func (a *App) GetValue(key string) (string, error) {
 }
 
 func (a *App) SetValue(key, value string) error {
+	if a.rawClient == nil {
+		return fmt.Errorf("not connected")
+	}
 	err := a.rawClient.Set(key, value)
 	if err != nil {
 		a.logger.Error("failed to set value", "key", key, "error", err)
@@ -150,12 +214,18 @@ func (a *App) SetValue(key, value string) error {
 }
 
 func (a *App) DeleteValue(key string) error {
+	if a.rawClient == nil {
+		return fmt.Errorf("not connected")
+	}
 	return a.withRateLimitRetry(func() error {
 		return a.rawClient.Delete(key)
 	}, "DeleteValue", key)
 }
 
 func (a *App) SearchCache(prefix string, offset, limit int) (KeyListResult, error) {
+	if a.rawClient == nil {
+		return KeyListResult{}, fmt.Errorf("not connected")
+	}
 	keys, err := a.rawClient.IterateCacheByPrefix(prefix, offset, limit)
 	if err != nil {
 		a.logger.Error("failed to search cache", "error", err)
@@ -165,6 +235,9 @@ func (a *App) SearchCache(prefix string, offset, limit int) (KeyListResult, erro
 }
 
 func (a *App) GetCache(key string) (string, error) {
+	if a.rawClient == nil {
+		return "", fmt.Errorf("not connected")
+	}
 	value, err := a.rawClient.GetCache(key)
 	if err != nil {
 		if err.Error() == "key not found" {
@@ -177,6 +250,9 @@ func (a *App) GetCache(key string) (string, error) {
 }
 
 func (a *App) SetCache(key, value string) error {
+	if a.rawClient == nil {
+		return fmt.Errorf("not connected")
+	}
 	err := a.rawClient.SetCache(key, value)
 	if err != nil {
 		a.logger.Error("failed to set cache", "key", key, "error", err)
@@ -185,12 +261,18 @@ func (a *App) SetCache(key, value string) error {
 }
 
 func (a *App) DeleteCache(key string) error {
+	if a.rawClient == nil {
+		return fmt.Errorf("not connected")
+	}
 	return a.withRateLimitRetry(func() error {
 		return a.rawClient.DeleteCache(key)
 	}, "DeleteCache", key)
 }
 
 func (a *App) SearchBlobs(prefix string, offset, limit int) (KeyListResult, error) {
+	if a.blobController == nil {
+		return KeyListResult{}, fmt.Errorf("not connected")
+	}
 	keys, err := a.blobController.IterateByPrefix(a.ctx, prefix, offset, limit)
 	if err != nil {
 		a.logger.Error("failed to search blobs", "error", err)
@@ -205,6 +287,9 @@ type BlobInfo struct {
 }
 
 func (a *App) GetBlobInfo(key string) (string, error) {
+	if a.blobController == nil {
+		return "", fmt.Errorf("not connected")
+	}
 	// For now, we need to download to get size
 	// In a future version, the blob controller could provide metadata without downloading
 	reader, err := a.blobController.Download(a.ctx, key)
@@ -247,12 +332,18 @@ func (a *App) DownloadBlob(key string) (string, error) {
 }
 
 func (a *App) DeleteBlob(key string) error {
+	if a.blobController == nil {
+		return fmt.Errorf("not connected")
+	}
 	return a.withRateLimitRetry(func() error {
 		return a.blobController.Delete(a.ctx, key)
 	}, "DeleteBlob", key)
 }
 
 func (a *App) UploadBlob(key string) error {
+	if a.blobController == nil {
+		return fmt.Errorf("not connected")
+	}
 	dialog, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select File to Upload",
 		Filters: []runtime.FileFilter{
@@ -294,6 +385,9 @@ func (a *App) UploadBlob(key string) error {
 }
 
 func (a *App) PublishEvent(topic string, data string) error {
+	if a.rawClient == nil {
+		return fmt.Errorf("not connected")
+	}
 	a.logger.Info("publishing event to server", "topic", topic, "data", data)
 	err := a.rawClient.PublishEvent(topic, data)
 	if err != nil {
@@ -305,6 +399,9 @@ func (a *App) PublishEvent(topic string, data string) error {
 }
 
 func (a *App) PurgeAllSubscribers() (int, error) {
+	if a.rawClient == nil {
+		return 0, fmt.Errorf("not connected")
+	}
 	count, err := a.rawClient.PurgeEventSubscriptionsAllNodes()
 	if err != nil {
 		a.logger.Error("failed to purge all subscribers", "error", err)
@@ -320,6 +417,9 @@ type EventMessage struct {
 }
 
 func (a *App) SubscribeToTopic(topic string) error {
+	if a.rawClient == nil {
+		return fmt.Errorf("not connected")
+	}
 	a.subscriptionsMux.Lock()
 	defer a.subscriptionsMux.Unlock()
 
