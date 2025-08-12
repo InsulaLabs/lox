@@ -80,3 +80,19 @@ dev:
 
 run: build
 	./$(BUILD_DIR)/bin/loxhaus
+
+install: build
+	@echo "Installing loxhaus..."
+	@sudo install -m 755 $(BUILD_DIR)/bin/loxhaus /usr/local/bin/
+	@sudo install -m 644 $(ICON_SOURCE) /usr/share/icons/hicolor/256x256/apps/loxhaus.png
+	@sudo install -m 644 loxhaus.desktop /usr/share/applications/
+	@sudo update-icon-caches /usr/share/icons/hicolor/
+	@echo "Installation complete!"
+
+uninstall:
+	@echo "Uninstalling loxhaus..."
+	@sudo rm -f /usr/local/bin/loxhaus
+	@sudo rm -f /usr/share/icons/hicolor/256x256/apps/loxhaus.png
+	@sudo rm -f /usr/share/applications/loxhaus.desktop
+	@sudo update-icon-caches /usr/share/icons/hicolor/
+	@echo "Uninstallation complete!"
