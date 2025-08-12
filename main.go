@@ -21,7 +21,7 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
-//go:embed build/appicon.png
+//go:embed assets/logo.png
 var icon []byte
 
 var logger *slog.Logger
